@@ -5,6 +5,7 @@ from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from langchain.chains.question_answering import load_qa_chain
+from langchain.document_loaders import TextLoader
 
 rules = """
 1. The Readme should have a title and a description describing the purpose of the project (score=3)
@@ -47,7 +48,7 @@ def validate_readme(directory_location):
 
     prompt = PromptTemplate(template=validate_prompt, input_variables=["readme", "rules", "exemplar"])
     llm = OpenAI(temperature=0)
-    llm_chain = LLMChain(prompt=prompt, llm=llm)
+    llm_chain = LLMChain(prompt=prompt, llm=llm, token_max=1000)
     return llm_chain.run(readme=readme_contents, rules=rules, exemplar=exemplar)
 
 def generate_readme(directory_location):
@@ -63,32 +64,23 @@ def generate_readme(directory_location):
     {exemplar}
      ```
 
-    Use the contents of the various files in the project to generate a concise Readme:
-
-    {files}
+     Please use the files here to generate the readme.
 
     """
     
-    prompt = PromptTemplate(template=generate_prompt, input_variables=["files", "rules", "exemplar"])
+    prompt = PromptTemplate(template=generate_prompt, input_variables=["rules", "exemplar"])
     llm = OpenAI(model="text-davinci-003", temperature=0)
-    chain = load_qa_chain(chain_type="stuff", llm=llm)
+    chain = load_qa_chain(chain_type="refine", llm=llm, verbose=True)
 
-    files = ""
+    documents = []
 
     for filename in glob.iglob(directory_location + '**/**', recursive=True):
-        if not(path.isdir(filename)) and not("README" in filename):
-            f = open(filename)
-            contents = f"""
-                
-                Filename: {filename}
-                Contents:
-                ```
-                {f.read()}
-                ```
-            """
-            files += contents
+        if not(path.isdir(filename)) and not("README" in filename) and not("go.sum" in filename):
+            loader = TextLoader(filename)
+            docs = loader.load()
+            documents.append(docs[0])
 
-    return chain.run(question=prompt.format(files=files, rules=rules, exemplar=exemplar))
+    return chain.run(input_documents=documents, question=prompt.format(rules=rules, exemplar=exemplar))
 
 if __name__ == '__main__':
     directory_location = sys.argv[1]
