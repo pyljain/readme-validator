@@ -43,12 +43,12 @@ def validate_readme(directory_location):
     ```
 
     Could you please respond with the score for the Readme based on the scores mentioned next to each rule?
-    Please also list out which rules passed and which ones failed. If you are not sure, please consider the rule evaluation failed.
+    Please also list out which rules passed and which ones failed also providing rule description in a table. 
     """
 
     prompt = PromptTemplate(template=validate_prompt, input_variables=["readme", "rules", "exemplar"])
     llm = OpenAI(temperature=0)
-    llm_chain = LLMChain(prompt=prompt, llm=llm, token_max=1000)
+    llm_chain = LLMChain(prompt=prompt, llm=llm)
     return llm_chain.run(readme=readme_contents, rules=rules, exemplar=exemplar)
 
 def generate_readme(directory_location):
@@ -84,5 +84,5 @@ def generate_readme(directory_location):
 
 if __name__ == '__main__':
     directory_location = sys.argv[1]
-    # print(validate_readme(directory_location))
-    print(generate_readme(directory_location))
+    print(validate_readme(directory_location))
+    # print(generate_readme(directory_location))
